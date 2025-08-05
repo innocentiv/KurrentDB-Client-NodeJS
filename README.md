@@ -1,37 +1,174 @@
-<a href="https://kurrent.io">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="KurrentLogo-White.png">
-    <source media="(prefers-color-scheme: light)" srcset="KurrentLogo-Black.png">
-    <img alt="Kurrent" src="KurrentLogo-Plum.png" height="50%" width="50%">
-  </picture>
-</a>
+# @kurrent/kurrentdb-client
 
-# KurrentDB NodeJS Client
-
+[![npm](https://img.shields.io/npm/v/@kurrent/kurrentdb-client.svg)](https://www.npmjs.com/package/@kurrent/kurrentdb-client)
 [![Previous LTS](https://github.com/kurrent-io/KurrentDB-Client-NodeJS/actions/workflows/test_previous_LTS.yml/badge.svg)](https://github.com/kurrent-io/KurrentDB-Client-NodeJS/actions/workflows/test_previous_LTS.yml)
 [![LTS](https://github.com/kurrent-io/KurrentDB-Client-NodeJS/actions/workflows/test_LTS.yml/badge.svg)](https://github.com/kurrent-io/KurrentDB-Client-NodeJS/actions/workflows/test_LTS.yml)
 [![next](https://github.com/kurrent-io/KurrentDB-Client-NodeJS/actions/workflows/test_next.yml/badge.svg)](https://github.com/kurrent-io/KurrentDB-Client-NodeJS/actions/workflows/test_next.yml)
 
-KurrentDB is a database that's engineered for modern software applications and event-driven architectures. Its
-event-native design simplifies data modeling and preserves data integrity while the integrated streaming engine solves
-distributed messaging challenges and ensures data consistency.
+This is the package for the NodeJS client for KurrentDB 20+ and uses gRPC as the communication protocol.
 
-### Documentation
+## Installation
 
-* [Samples](https://github.com/kurrent-io/KurrentDB-Client-NodeJS/tree/master/packages/test/src/samples)
+```shell script
+# Yarn
+$ yarn add @kurrent/kurrentdb-client
 
-## Packages
+# NPM
+$ npm install --save @kurrent/kurrentdb-client
+```
 
-This monorepo contains the following packages:
+## KurrentDB Server Compatibility
 
-| Subfolder                                            | Package                                                                                |
-|------------------------------------------------------|----------------------------------------------------------------------------------------|
-| [`packages/db-client/`](packages/db-client/)         | [`@kurrent/kurrentdb-client`](https://www.npmjs.com/package/@kurrent/kurrentdb-client) |
-| [`packages/opentelemetry/`](packages/opentelemetry/) | [`@kurrent/opentelemetry`](https://www.npmjs.com/package/@kurrent/opentelemetry)       |
-| [`packages/test/`](packages/test/)                   | Internal tests                                                                         |
+Tests are run exclusively against Long-Term Support (LTS) versions. While the code may function with older versions, we do not provide any guarantees or support for them.
 
-The client uses [KurrentDB-Bridge-Client](https://github.com/kurrent-io/KurrentDB-Bridge-Client)
-to significantly improve read performance by leveraging Rust through native addons.
+Server setup instructions can be found under the installation section of the [KurrentDB Docs](https://docs.kurrent.io/server/v25.0/quick-start/installation.html). Follow the Docker setup for the simplest configuration.
+
+## Example
+
+The following snippet showcases a simple example where we form a connection, then append and read events from the server.
+
+###### Javascript example:
+
+```javascript
+const {
+  KurrentDBClient,
+  jsonEvent,
+  FORWARDS,
+  START,
+} = require('@kurrent/kurrentdb-client');
+
+const client = KurrentDBClient.connectionString`kurrentdb://admin:changeit@localhost:2113?tls=false`;
+
+async function simpleTest() {
+  const streamName = "es_supported_clients";
+
+  const event = jsonEvent({
+    type: "grpc-client",
+    data: {
+      languages: ["typescript", "javascript"],
+      runtime: "NodeJS",
+    },
+  });
+
+  const appendResult = await client.appendToStream(streamName, [event]);
+
+    // read the event
+    const events = client.readStream(streamName, {
+      fromRevision: START,
+      direction: FORWARDS,
+      maxCount: 10,
+    });
+
+    for await (const { event } of events) {
+      console.log('Appended event: ', event);
+    }
+  } catch (error) {
+    console.error('An error occured: ', error);
+  } finally {
+    await client.dispose();
+  }
+})();
+```
+
+###### Typescript example:
+
+```typescript
+import {
+  KurrentDBClient,
+  jsonEvent,
+  FORWARDS,
+  START,
+  JSONEventType,
+} from '@kurrent/kurrentdb-client';
+
+const client = KurrentDBClient.connectionString`kurrentdb://admin:changeit@localhost:2113?tls=false`;
+
+interface Reservation {
+  reservationId: string;
+  movieId: string;
+  userId: string;
+  seatId: string;
+}
+
+type SeatReservedEvent = JSONEventType<
+  'seat-reserved',
+  {
+    reservationId: string;
+    movieId: string;
+    userId: string;
+    seatId: string;
+  }
+>;
+
+type SeatChangedEvent = JSONEventType<
+  'seat-changed',
+  {
+    reservationId: string;
+    newSeatId: string;
+  }
+>;
+
+type ReservationEvents = SeatReservedEvent | SeatChangedEvent;
+
+async function simpleTest(): Promise<void> {
+  const streamName = 'booking-abc123';
+
+  const event = jsonEvent<SeatReservedEvent>({
+    type: 'seat-reserved',
+    data: {
+      reservationId: 'abc123',
+      movieId: 'tt0368226',
+      userId: 'nm0802995',
+      seatId: '4b',
+    },
+  });
+
+  const appendResult = await client.appendToStream<ReservationEvents>(
+    streamName,
+    event
+  );
+
+  // By reading the events in the stream, we can construct the current state of the booking
+
+  interface Reservation {
+    reservationId: string;
+    movieId: string;
+    userId: string;
+    seatId: string;
+  }
+
+  const events = client.readStream<ReservationEvents>(streamName, {
+    fromRevision: START,
+    direction: FORWARDS,
+    maxCount: 10,
+  });
+
+  const reservation: Partial<Reservation> = {};
+
+  for await (const { event } of events) {
+    switch (event.type) {
+      case 'seat-reserved': {
+        reservation.reservationId = event.data.reservationId;
+        reservation.movieId = event.data.movieId;
+        reservation.seatId = event.data.seatId;
+        reservation.userId = event.data.userId;
+        break;
+      }
+      case 'seat-changed': {
+        reservation.seatId = event.data.newSeatId;
+        break;
+      }
+      default: {
+        const _exhaustiveCheck: never = event;
+        break;
+      }
+    }
+  }
+}
+
+// Do something with our reservation
+console.log(reservation);
+```
 
 ## Communities
 

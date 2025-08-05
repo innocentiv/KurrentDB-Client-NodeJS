@@ -1,0 +1,8 @@
+import type { EventData, JSONEventType } from "../types";
+export type JSONEventOptions<E extends JSONEventType> = {
+    /**
+     * The id to this event. By default, the id will be generated.
+     */
+    id?: string;
+} & E;
+export declare const jsonEvent: <E extends JSONEventType>({ type, data, metadata, id, }: JSONEventOptions<E>) => EventData<E>;

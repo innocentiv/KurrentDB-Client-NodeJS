@@ -1,7 +1,0 @@
-node_modules
-dist
-generated
-protos
-**/*.js
-**/*.test.ts
-samples

@@ -1,0 +1,12 @@
+import type { BaseOptions } from "../types";
+export type EnableProjectionOptions = BaseOptions;
+declare module "../Client" {
+    interface Client {
+        /**
+         * Enables a projection.
+         * @param projectionName - The name of the projection to enable.
+         * @param options - Enable projection options.
+         */
+        enableProjection(projectionName: string, options?: EnableProjectionOptions): Promise<void>;
+    }
+}
