@@ -11,7 +11,7 @@ import { Client } from "../Client";
 import type { BaseOptions } from "../types";
 
 import type { PersistentSubscriptionToAllSettings } from "./utils/persistentSubscriptionSettings";
-import { settingsToGRPC } from "./utils/settingsToGRPC";
+import { settingsToUpdateGRPC } from "./utils/settingsToGRPC";
 
 export type UpdatePersistentSubscriptionToAllOptions = BaseOptions;
 
@@ -45,7 +45,7 @@ Client.prototype.updatePersistentSubscriptionToAll = async function (
   const req = new UpdateReq();
   const options = new UpdateReq.Options();
   const allOptions = new UpdateReq.AllOptions();
-  const reqSettings = settingsToGRPC(settings, UpdateReq.Settings);
+  const reqSettings = settingsToUpdateGRPC(settings, UpdateReq.Settings);
 
   switch (settings.startFrom) {
     case START: {

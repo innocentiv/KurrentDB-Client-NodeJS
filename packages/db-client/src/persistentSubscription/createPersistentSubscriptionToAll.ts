@@ -10,7 +10,7 @@ import { debug, convertToCommandError, UnsupportedError } from "../utils";
 import { Client } from "../Client";
 import { END, EVENT_TYPE, START, STREAM_NAME } from "../constants";
 
-import { settingsToGRPC } from "./utils/settingsToGRPC";
+import { settingsToCreateGRPC } from "./utils/settingsToGRPC";
 import type { PersistentSubscriptionToAllSettings } from "./utils/persistentSubscriptionSettings";
 
 export interface CreatePersistentSubscriptionToAllOptions extends BaseOptions {
@@ -57,7 +57,7 @@ Client.prototype.createPersistentSubscriptionToAll = async function (
   const req = new CreateReq();
   const options = new CreateReq.Options();
   const allOptions = new CreateReq.AllOptions();
-  const reqSettings = settingsToGRPC(settings, CreateReq.Settings);
+  const reqSettings = settingsToCreateGRPC(settings, CreateReq.Settings);
 
   switch (settings.startFrom) {
     case START: {

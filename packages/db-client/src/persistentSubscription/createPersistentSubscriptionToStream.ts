@@ -6,7 +6,7 @@ import { debug, convertToCommandError, createStreamIdentifier } from "../utils";
 import { Client } from "../Client";
 import { END, START } from "../constants";
 
-import { settingsToGRPC } from "./utils/settingsToGRPC";
+import { settingsToCreateGRPC } from "./utils/settingsToGRPC";
 import type { PersistentSubscriptionToStreamSettings } from "./utils/persistentSubscriptionSettings";
 
 declare module "../Client" {
@@ -40,7 +40,7 @@ Client.prototype.createPersistentSubscriptionToStream = async function (
   const req = new CreateReq();
   const options = new CreateReq.Options();
   const identifier = createStreamIdentifier(streamName);
-  const reqSettings = settingsToGRPC(settings, CreateReq.Settings);
+  const reqSettings = settingsToCreateGRPC(settings, CreateReq.Settings);
 
   // Add deprecated revision option for pre-21.10 support
   switch (settings.startFrom) {
